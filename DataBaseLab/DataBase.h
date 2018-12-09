@@ -33,7 +33,7 @@ public:
 	int selectAll();
 	vector<int> selectWhere(string field, string value);
 	bool insert(vector<string> data);
-	string select(int line);
+	vector<string> select(int line);
 	void deleteWhere(string field, string value);
-	void deleteTable(string table);
+	void dropTable(string table);
 };

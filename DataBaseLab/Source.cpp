@@ -35,6 +35,9 @@ int main() {
 			string tableName;
 			cout << "Введите имя таблицы: ";
 			cin >> tableName;
+			cout << "Введите имя поля, его длину и укажите true, если создавать индекс для этого поля, иначе false.\n"
+				<< "Первое поле - ключевое.\n"
+				<< "Для выхода введите нулевую длину." << endl;
 			if (DB.createTable(tableName)) cout << "Таблица создана" << endl;
 			else cout << "Таблица не создана" << endl;
 		}
@@ -55,7 +58,12 @@ int main() {
 		// Вставить данные в таблицу
 		else if (consoleCommand == 4) {
 			DB.openTable("card");
-			DB.insert(card1.toArray());
+			if (DB.insert(card1.toArray())) {
+				cout << "Запись добавлена" << endl;
+			}
+			else {
+				cout << "Ошибка при добавлении" << endl;
+			}
 		}
 		// Поиск с условием
 		else if (consoleCommand == 5) {
@@ -67,6 +75,10 @@ int main() {
 			DB.openTable("card");
 			DB.deleteWhere("number", "1000200030004000");
 			DB.selectWhere("number", "1000200030004000");
+		} 
+		// Удалить таблицу
+		else if (consoleCommand == 8) {
+			DB.dropTable("card");
 		}
 	}
 	

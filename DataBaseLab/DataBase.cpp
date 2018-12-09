@@ -7,8 +7,6 @@ bool DataBase::createTable(string table) {
 	
 	tableConfigFileName = tableName + "\\" + tableName + ".cfg";
 	fstream tableConfigFile(tableConfigFileName, std::fstream::out);
-	cout << "Введите имена полей, их длину и укажите true, если создавать индекс для этого поля, иначе false.\n"
-		<< "Для выхода введите нулевую длину." << endl;
 
 	if (tableConfigFile.is_open()) {
 		tableCurrentSize = 0;
@@ -102,43 +100,49 @@ bool DataBase::insert(vector<string> data) {
 	fstream tableFile(tableFileName, std::fstream::in);
 
 	if (tableFile.is_open()) {
-		tableCurrentSize += 1;
-		// записываем данные в каждое поле
-		for (int i = 0; i < data.size(); i++) {
-			// если по этому полю есть таблица индексов, то записываем в нее изменения
-			if (tableFieldsIndexExist[i] == true) {
-				string indexFileName = tableName + "\\" + tableFields[i].first + ".idx";
-				fstream indexFile(indexFileName, std::fstream::in | std::fstream::out);
+		// проверяем на уникальность по ключевому полю
+		if (selectWhere(tableFields[0].first, data[0]).size() != 0) {
+			return false;
+		}
+		else {
+			tableCurrentSize += 1;
+			// записываем данные в каждое поле
+			for (int i = 0; i < data.size(); i++) {
+				// если по этому полю есть таблица индексов, то записываем в нее изменения
+				if (tableFieldsIndexExist[i] == true) {
+					string indexFileName = tableName + "\\" + tableFields[i].first + ".idx";
+					fstream indexFile(indexFileName, std::fstream::in | std::fstream::out);
 
-				if (indexFile.is_open()) {
-					// Определяем размер записи в таблице индексов
-					string record;
-					getline(indexFile, record);
-					int recordSize = record.size() + 2;
-
-					// Узнаем, на какой примерно строке находится запись в индексе
-					int fieldHash = calculateIndexHash(data[i], tableCapacity);
-
-					// Делаем запись в таблице индексов в первом пустом месте
-					indexFile.seekp((fieldHash - 1) * recordSize, 0);
-					while (true) {
+					if (indexFile.is_open()) {
+						// Определяем размер записи в таблице индексов
+						string record;
 						getline(indexFile, record);
-						string fieldValue;
-						int idx;
-						stringstream ss_in;
-						ss_in << record;
-						ss_in >> fieldValue >> idx;
-						// если строка с записью пустая, то записываем
-						if (fieldValue.compare("") == 0) {
-							indexFile.seekp(long(indexFile.tellp()) - recordSize, 0);
-							stringstream ss_out;
-							ss_out << setw(tableFields[i].second) << data[i] << " "
-								<< setw(to_string(tableCapacity).size()) << tableCurrentSize << endl;
+						int recordSize = record.size() + 2;
 
-							indexFile.write(ss_out.str().c_str(), recordSize - 2);
-							break;
+						// Узнаем, на какой примерно строке находится запись в индексе
+						int fieldHash = calculateIndexHash(data[i], tableCapacity);
+
+						// Делаем запись в таблице индексов в первом пустом месте
+						indexFile.seekp((fieldHash - 1) * recordSize, 0);
+						while (true) {
+							getline(indexFile, record);
+							string fieldValue;
+							int idx;
+							stringstream ss_in;
+							ss_in << record;
+							ss_in >> fieldValue >> idx;
+							// если строка с записью пустая, то записываем
+							if (fieldValue.compare("") == 0) {
+								indexFile.seekp(long(indexFile.tellp()) - recordSize, 0);
+								stringstream ss_out;
+								ss_out << setw(tableFields[i].second) << data[i] << " "
+									<< setw(to_string(tableCapacity).size()) << tableCurrentSize << endl;
+
+								indexFile.write(ss_out.str().c_str(), recordSize - 2);
+								break;
+							}
 						}
-					}			
+					}
 				}
 			}
 		}
@@ -166,22 +170,22 @@ bool DataBase::insert(vector<string> data) {
 }
 
 
-string DataBase::select(int line) {
+vector<string> DataBase::select(int line) {
 	fstream tableFile(tableFileName, std::fstream::in);
-	int k = 2;
-	char *tuple = new char[tupleLength - k];
+	string tuple;
 
 	if (tableFile.is_open()) {
 		tableFile.seekg((line - 1) * tupleLength, 0);
-		tableFile.getline(tuple, tupleLength - k);
+		getline(tableFile, tuple);
 	}
 
-	string toreturn(tuple);
-	/*vector<string> vs = split(toreturn, ',');
-	for (auto v : vs) {
-		cout << v << endl;
-	}*/
-	return toreturn;
+	vector<string> vs = split(tuple, ',');
+	if (vs.size() < tableFields.size())
+		cout << "Запись отсутствует" << endl;
+	else
+		cout << tuple << endl;
+
+	return vs;
 }
 
 
@@ -234,7 +238,8 @@ vector<int> DataBase::selectWhere(string field, string value) {
 		}
 	}
 	for (int l : lines) {
-		cout << l << " " << select(l) << endl;
+		cout << l << " ";
+		select(l);
 	}
 	return lines;
 }
@@ -260,13 +265,12 @@ void DataBase::deleteWhere(string field, string value) {
 		for (int i = 0; i < lines.size(); i++) {
 			tableFile.seekg((lines[i] - 1) * tupleLength, 0);
 			tableFile << emptyRecord;
-			//tableFile.getline(tuple, tupleLength - k);
 		}
 	}
 }
 
 
-void DataBase::deleteTable(string table) {
+void DataBase::dropTable(string table) {
 
 }
 
