@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include <iomanip>
+#include <algorithm>
 using namespace std;
 
 class BankCard {

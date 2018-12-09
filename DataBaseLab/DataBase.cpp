@@ -6,19 +6,24 @@ bool DataBase::createTable(string table) {
 	_mkdir(table.c_str());
 	
 	tableConfigFileName = tableName + "\\" + tableName + ".cfg";
-	fstream tabeConfigFile(tableConfigFileName, std::fstream::out);
+	fstream tableConfigFile(tableConfigFileName, std::fstream::out);
 	cout << "¬ведите имена полей, их длину и укажите true, если создавать индекс дл€ этого пол€, иначе false.\n"
 		<< "ƒл€ выхода введите нулевую длину." << endl;
 
-	if (tabeConfigFile.is_open()) {
+	if (tableConfigFile.is_open()) {
+		tableCurrentSize = 0;
+		tableConfigFile << tableCurrentSize << endl;
+
 		string fieldName, fieldIndex;
 		int fieldLength;
+		// записываем информацию о колонках таблицы в конфиг файл
 		while (cin >> fieldName >> fieldLength >> fieldIndex) {
 			if (fieldLength == 0) break;
 			else {
-				tabeConfigFile << fieldName << " " << fieldLength << " " << fieldIndex << endl;
+				tableConfigFile << fieldName << " " << fieldLength << " " << fieldIndex << endl;
+				// создаем таблицу индексов дл€ пол€
 				if (fieldIndex.compare("true") == 0) {
-					createIndexFile(fieldName, fieldLength, 100000);
+					createIndexFile(fieldName, fieldLength, tableCapacity);
 				}
 			}
 		}
@@ -27,6 +32,17 @@ bool DataBase::createTable(string table) {
 		return false;
 	}
 
+	tableFileName = tableName + "\\" + tableName + ".db";
+	fstream tableFile(tableFileName, std::fstream::out);
+	tableFile.close();
+	/*
+	if (tableConfigFile.is_open()) {
+		tableFile << 0 << endl;
+	}
+	else {
+		return false;
+	}
+	*/
 	tableConfigFileName = "";
 	tableName = "";
 	return true;
@@ -36,17 +52,21 @@ bool DataBase::openTable(string table) {
 	tableName = table;
 	tableFileName = table + "\\" + table + ".db";
 	tableConfigFileName = table + "\\" + table + ".cfg";
-	fstream tabeConfigFile(tableConfigFileName, std::fstream::in);
+	fstream tableConfigFile(tableConfigFileName, std::fstream::in);
 
 	tupleLength = 0;
 
-	if (tabeConfigFile.is_open()) {
+	if (tableConfigFile.is_open()) {
+		tableConfigFile >> tableCurrentSize;
 		string fieldName;
 		int fieldLength;
-		while (tabeConfigFile >> fieldName >> fieldLength) {
+		string filedIndexExists;
+		while (tableConfigFile >> fieldName >> fieldLength >> filedIndexExists) {
 			pair<string, int> p(fieldName, fieldLength);
 			tableFields.push_back(p);
-
+			if (filedIndexExists.compare("true") == 0)
+				tableFieldsIndexExist.push_back(true);
+			else tableFieldsIndexExist.push_back(false);
 			// вычисл€ем длину в байтах каждой записи в таблице
 			tupleLength += fieldLength + 1;
 		}
@@ -79,17 +99,76 @@ int DataBase::selectAll() {
 
 
 bool DataBase::insert(vector<string> data) {
-	fstream tableFile(tableFileName, std::fstream::app);
+	fstream tableFile(tableFileName, std::fstream::in);
 
 	if (tableFile.is_open()) {
+		tableCurrentSize += 1;
+		// записываем данные в каждое поле
 		for (int i = 0; i < data.size(); i++) {
-			tableFile << setw(tableFields[i].second) << data[i] << ",";
+			// если по этому полю есть таблица индексов, то записываем в нее изменени€
+			if (tableFieldsIndexExist[i] == true) {
+				string indexFileName = tableName + "\\" + tableFields[i].first + ".idx";
+				fstream indexFile(indexFileName, std::fstream::in | std::fstream::out);
+
+				if (indexFile.is_open()) {
+					// ќпредел€ем размер записи в таблице индексов
+					string record;
+					getline(indexFile, record);
+					int recordSize = record.size() + 2;
+
+					// ”знаем, на какой примерно строке находитс€ запись в индексе
+					int fieldHash = calculateIndexHash(data[i], tableCapacity);
+
+					// ƒелаем запись в таблице индексов в первом пустом месте
+					indexFile.seekp((fieldHash - 1) * recordSize, 0);
+					while (true) {
+						getline(indexFile, record);
+						string fieldValue;
+						int idx;
+						stringstream ss_in;
+						ss_in << record;
+						ss_in >> fieldValue >> idx;
+						// если строка с записью пуста€, то записываем
+						if (fieldValue.compare("") == 0) {
+							indexFile.seekp(long(indexFile.tellp()) - recordSize, 0);
+							stringstream ss_out;
+							// TODO: определить пор€дковый номер вставленной записи
+							ss_out << setw(tableFields[i].second) << data[i] << " "
+								<< setw(to_string(tableCapacity).size()) << tableCurrentSize << endl;
+
+							indexFile.write(ss_out.str().c_str(), recordSize - 2);
+							break;
+						}
+					}			
+				}
+			}
 		}
-		tableFile << "\n";
+		tableFile.close();
 	}
 	else {
 		return false;
 	}
+
+	// вставл€ем в файл таблицы в последнюю строку
+	fstream tableFileDB(tableFileName, std::fstream::app);
+	if (tableFileDB.is_open()) {
+		for (int i = 0; i < data.size(); i++) {
+			tableFileDB << setw(tableFields[i].second) << data[i] << ",";
+		}
+		tableFileDB << "\n";
+	}
+	else {
+		return false;
+	}
+	
+	fstream tableConfigFile(tableConfigFileName, std::fstream::in | std::fstream::out);
+	string lastSize, newSize;
+	newSize = to_string(tableCurrentSize);
+	tableConfigFile.seekp(0);
+	tableConfigFile << newSize;
+	//tableConfigFile.write(newSize.c_str(), newSize.size());
+	tableConfigFile.close();
+
 	return true;
 }
 
@@ -113,6 +192,64 @@ string DataBase::select(int line) {
 }
 
 
+vector<int> DataBase::selectWhere(string field, string value) {
+	vector<int> lines;
+	// ѕровер€ем, существует ли такое поле в таблице
+	int k = -1;
+	for (int i = 0; i < tableFields.size(); i++) {
+		if (tableFields[i].first.compare(field) == 0)
+			k = i;
+	}
+	if (k == -1) {
+		cout << "“акого пол€ не существует." << endl;
+	}
+	else {
+		// —мотрим, есть ли дл€ данного пол€ таблица индекса
+		if (tableFieldsIndexExist[k] == true) {
+			string indexFileName = tableName + "\\" + field + ".idx";
+			fstream indexFile(indexFileName, std::fstream::in);
+
+			// ќпредел€ем размер записи в таблице индексов
+			string record;
+			getline(indexFile, record);
+			int recordSize = record.size() + 2;
+
+			// ѕровер€ем наличие записи
+			int fieldHash = calculateIndexHash(value, tableCapacity);
+			indexFile.seekp((fieldHash - 1) * recordSize, 0);
+
+			// ѕока не встретим пустую запись, пытаемс€ найти еще записи с этим значением
+			while (true) {
+				getline(indexFile, record);
+				string fieldValue;
+				int idx;
+				stringstream ss;
+				ss << record;
+				ss >> fieldValue >> idx;
+				if (fieldValue.compare(value) == 0) {
+					lines.push_back(idx);
+				}
+				if (fieldValue.compare("") == 0) {
+					break;
+				}
+			}
+		}
+		// ≈сли таблицы индексов нет, то ищем простым перебором
+		else {
+			cout << "NO" << endl;
+		}
+	}
+	for (int l : lines) {
+		cout << l << " ";
+	}
+	return lines;
+}
+
+
+void DataBase::deleteTable(string table) {
+
+}
+
 void DataBase::createIndexFile(string fieldName, int fieldLength, int indexFileSize) {
 	string indexFileName = tableName + "\\" + fieldName + ".idx";
 	fstream indexFile(indexFileName, std::fstream::out);
@@ -133,15 +270,20 @@ void DataBase::createIndexFile(string fieldName, int fieldLength, int indexFileS
 
 // јлгоритм хэшировани€ строк, которое используетс€ дл€ быстрого доступа к данным по ключевым пол€м.
 // ѕолное описание алгоритма http://e-maxx.ru/algo/string_hashes
-int DataBase::calculateIndexHash(string fieldName, int tableSize) {
+int DataBase::calculateIndexHash(string fieldName, int tableCapacity) {
 	int p = 73; // простое число, примерно равное количеству символов во входном алфавите (прописные и строчные буквы и цифры)
 	unsigned long long hash = 0, power = 1;
 	for (int i = 0; i < fieldName.length(); i++) {
 		hash += (fieldName[i] - 'a' + 1) * power;
 	}
-	return hash % tableSize;
+	return hash % tableCapacity;
 }
 
+
+
+void DataBase::changeTableCurrentSizeInFile(int curSize) {
+
+}
 
 std::vector<std::string> split(const std::string& s, char delimiter)
 {

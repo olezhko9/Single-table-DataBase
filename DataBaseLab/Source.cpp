@@ -10,6 +10,7 @@ int main() {
 	int consoleCommand = -1;
 	DataBase DB;
 	BankCard card1("4000300020001000", "Oleg Naumov", "26.11.2018", 10500.5, 159);
+	BankCard card2("1111222230004000", "Oleg Nenaumov", "26.11.2018", 12345.7, 222);
 	while (true) {
 		cout << "\n\n(0) Выйти из программы.\n"
 			<< "(1) Создать таблицу\n"
@@ -53,7 +54,13 @@ int main() {
 		}
 		// Вставить данные в таблицу
 		else if (consoleCommand == 4) {
+			//DB.openTable("card");
 			DB.insert(card1.toArray());
+		}
+		// Поиск с условием
+		else if (consoleCommand == 5) {
+			DB.openTable("card");
+			DB.selectWhere("number", "4000300020001000");
 		}
 	}
 	

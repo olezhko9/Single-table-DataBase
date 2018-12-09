@@ -11,10 +11,13 @@ BankCard::BankCard(string card_number, string card_holder, string card_end_date,
 vector<string> BankCard::toArray() {
 	vector<string> data;
 	data.push_back(number);
-	data.push_back(holder_name);
-	data.push_back(end_date);
-	data.push_back(to_string(balance));
-	data.push_back(to_string(cvc));
+	//data.push_back(holder_name);
+	//data.push_back(end_date);
+	string balanceString = to_string(balance);
+	std::replace(balanceString.begin(), balanceString.end(), ',', '.');
+	data.push_back(balanceString);
+	//cout << balanceString << endl;
+	//data.push_back(to_string(cvc));
 
 	return data;
 }
