@@ -13,7 +13,10 @@ vector<string> BankCard::toArray() {
 	data.push_back(number);
 	//data.push_back(holder_name);
 	//data.push_back(end_date);
-	string balanceString = to_string(balance);
+	stringstream ss;
+	ss << balance;
+	string balanceString;
+	ss >> balanceString;
 	std::replace(balanceString.begin(), balanceString.end(), ',', '.');
 	data.push_back(balanceString);
 	//cout << balanceString << endl;

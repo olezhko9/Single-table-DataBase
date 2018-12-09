@@ -132,7 +132,6 @@ bool DataBase::insert(vector<string> data) {
 						if (fieldValue.compare("") == 0) {
 							indexFile.seekp(long(indexFile.tellp()) - recordSize, 0);
 							stringstream ss_out;
-							// TODO: определить порядковый номер вставленной записи
 							ss_out << setw(tableFields[i].second) << data[i] << " "
 								<< setw(to_string(tableCapacity).size()) << tableCurrentSize << endl;
 
@@ -161,13 +160,7 @@ bool DataBase::insert(vector<string> data) {
 		return false;
 	}
 	
-	fstream tableConfigFile(tableConfigFileName, std::fstream::in | std::fstream::out);
-	string lastSize, newSize;
-	newSize = to_string(tableCurrentSize);
-	tableConfigFile.seekp(0);
-	tableConfigFile << newSize;
-	//tableConfigFile.write(newSize.c_str(), newSize.size());
-	tableConfigFile.close();
+	changeTableCurrentSizeInFile(tableCurrentSize);
 
 	return true;
 }
@@ -237,18 +230,46 @@ vector<int> DataBase::selectWhere(string field, string value) {
 		// Если таблицы индексов нет, то ищем простым перебором
 		else {
 			cout << "NO" << endl;
+
 		}
 	}
 	for (int l : lines) {
-		cout << l << " ";
+		cout << l << " " << select(l) << endl;
 	}
 	return lines;
+}
+
+
+void DataBase::deleteWhere(string field, string value) {
+	vector<int> lines = selectWhere(field, value);
+
+	fstream tableFile(tableFileName, std::fstream::in | std::fstream::out);
+	int k = 2;
+	//char *tuple = new char[tupleLength - k];
+	string tuple;
+
+	// пустая запись, которая заменить удаляемую
+	string emptyRecord;
+	for (int i = 0; i < tupleLength - k; i++) {
+		emptyRecord.append(" ");
+	}
+	emptyRecord.append("\n");
+
+
+	if (tableFile.is_open()) {
+		for (int i = 0; i < lines.size(); i++) {
+			tableFile.seekg((lines[i] - 1) * tupleLength, 0);
+			tableFile << emptyRecord;
+			//tableFile.getline(tuple, tupleLength - k);
+		}
+	}
 }
 
 
 void DataBase::deleteTable(string table) {
 
 }
+
 
 void DataBase::createIndexFile(string fieldName, int fieldLength, int indexFileSize) {
 	string indexFileName = tableName + "\\" + fieldName + ".idx";
@@ -282,7 +303,10 @@ int DataBase::calculateIndexHash(string fieldName, int tableCapacity) {
 
 
 void DataBase::changeTableCurrentSizeInFile(int curSize) {
-
+	fstream tableConfigFile(tableConfigFileName, std::fstream::in | std::fstream::out);
+	tableConfigFile.seekp(0);
+	tableConfigFile << to_string(tableCurrentSize);
+	tableConfigFile.close();
 }
 
 std::vector<std::string> split(const std::string& s, char delimiter)

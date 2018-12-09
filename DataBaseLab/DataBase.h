@@ -34,5 +34,6 @@ public:
 	vector<int> selectWhere(string field, string value);
 	bool insert(vector<string> data);
 	string select(int line);
+	void deleteWhere(string field, string value);
 	void deleteTable(string table);
 };

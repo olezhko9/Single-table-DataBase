@@ -9,8 +9,8 @@ int main() {
 	setlocale(LC_ALL, "Russian");
 	int consoleCommand = -1;
 	DataBase DB;
-	BankCard card1("4000300020001000", "Oleg Naumov", "26.11.2018", 10500.5, 159);
-	BankCard card2("1111222230004000", "Oleg Nenaumov", "26.11.2018", 12345.7, 222);
+	BankCard card1("4000300020001000", "Oleg Naumov", "26.11.2018", 10500.5f, 159);
+	BankCard card2("1111222230004000", "Oleg Nenaumov", "26.11.2018", 12345.7f, 222);
 	while (true) {
 		cout << "\n\n(0) Выйти из программы.\n"
 			<< "(1) Создать таблицу\n"
@@ -54,7 +54,7 @@ int main() {
 		}
 		// Вставить данные в таблицу
 		else if (consoleCommand == 4) {
-			//DB.openTable("card");
+			DB.openTable("card");
 			DB.insert(card1.toArray());
 		}
 		// Поиск с условием
@@ -62,18 +62,14 @@ int main() {
 			DB.openTable("card");
 			DB.selectWhere("number", "4000300020001000");
 		}
+		// Удаление запись по значению поля
+		else if (consoleCommand == 7) {
+			DB.openTable("card");
+			DB.deleteWhere("number", "1000200030004000");
+			DB.selectWhere("number", "1000200030004000");
+		}
 	}
 	
-	/*db.openTable("card");
-
-	//BankCard bc("4000300020001000", "Oleg Naumov", "26.11.2018", 10500.5, 159);
-	//BankCard bc("1000200030004000", "Oleg Nenaumov", "3.3.2020", 1000.0, 753);
-	//cout << bc;
-
-	//db.insert(bc.toArray());
-	cout << db.select(1) << endl;
-	cout << db.select(8) << endl;
-	//db.select(1);*/
 	system("pause");
 	return 0;
 }
