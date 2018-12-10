@@ -68,18 +68,21 @@ int main() {
 		// Поиск с условием
 		else if (consoleCommand == 5) {
 			DB.openTable("card");
-			//DB.selectWhere("number", "4000300020001000");
-			DB.selectWhere("balance", "10500.5");
+			DB.selectWhere("number", "1000200030004100");
+			//DB.selectWhere("balance", "10500.5");
 		}
 		// Удаление запись по значению поля
 		else if (consoleCommand == 7) {
 			DB.openTable("card");
-			DB.deleteWhere("number", "1000200030004000");
+			cout << "Было удалено " << DB.deleteWhere("number", "1000200030004000") << " записей.\n";
 			DB.selectWhere("number", "1000200030004000");
 		} 
 		// Удалить таблицу
 		else if (consoleCommand == 8) {
 			DB.dropTable("card");
+		}
+		else {
+			cout << "Неверная команда\n";
 		}
 	}
 	

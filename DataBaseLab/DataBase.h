@@ -27,14 +27,15 @@ private:
 	void createIndexFile(string fieldName, int fieldLength, int indexFileSize);
 	int calculateIndexHash(string fieldName, int tableCapacity);
 	void changeTableCurrentSizeInFile(int curSize);
+	std::vector<std::string> tupleToArray(const std::string& s, char delimiter);
+	vector<string> select(int line);
 public:
 	bool createTable(string table);
 	bool openTable(string table);
 	bool insert(vector<string> data);
 	int selectAll();
-	vector<string> select(int line);
-	vector<int> selectWhere(string field, string value);
+	vector< pair<int, vector<string> > > selectWhere(string field, string value);
 	void updateWhere(string field, string value, string newValue);
-	void deleteWhere(string field, string value);
+	int deleteWhere(string field, string value);
 	void dropTable(string table);
 };

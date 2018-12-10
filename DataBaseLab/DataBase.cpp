@@ -1,5 +1,5 @@
 #include "DataBase.h"
-std::vector<std::string> split(const std::string& s, char delimiter);
+
 
 bool DataBase::createTable(string table) {
 	tableName = table;
@@ -33,14 +33,7 @@ bool DataBase::createTable(string table) {
 	tableFileName = tableName + "\\" + tableName + ".db";
 	fstream tableFile(tableFileName, std::fstream::out);
 	tableFile.close();
-	/*
-	if (tableConfigFile.is_open()) {
-		tableFile << 0 << endl;
-	}
-	else {
-		return false;
-	}
-	*/
+
 	tableConfigFileName = "";
 	tableName = "";
 	return true;
@@ -179,19 +172,22 @@ vector<string> DataBase::select(int line) {
 		getline(tableFile, tuple);
 	}
 
-	vector<string> vs = split(tuple, ',');
+	vector<string> arrayFromTuple = tupleToArray(tuple, ',');
 	//if (vs.size() < tableFields.size())
-	if (vs.size() < 2)
-		cout << "«апись отсутствует" << endl;
-	else
-		cout << tuple << endl;
+	if (arrayFromTuple.size() < 2) {
+		vector<string> emptyArray;
+		return emptyArray;
+	}
+	
 
-	return vs;
+	return arrayFromTuple;
 }
 
 
-vector<int> DataBase::selectWhere(string field, string value) {
-	vector<int> lines;
+//void DataBase::deleteRecord(int line)
+
+vector< pair<int, vector<string> > > DataBase::selectWhere(string field, string value) {
+	vector< pair<int, vector<string> > > lines;
 	// ѕровер€ем, существует ли такое поле в таблице
 	int k = -1;
 	for (int i = 0; i < tableFields.size(); i++) {
@@ -212,10 +208,11 @@ vector<int> DataBase::selectWhere(string field, string value) {
 			getline(indexFile, record);
 			int recordSize = record.size() + 2;
 
-			// ѕровер€ем наличие записи
+			
 			int fieldHash = calculateIndexHash(value, tableCapacity);
 			indexFile.seekp((fieldHash - 1) * recordSize, 0);
 
+			// ѕровер€ем наличие записи в индексном файле
 			// ѕока не встретим пустую запись, пытаемс€ найти еще записи с этим значением
 			while (true) {
 				getline(indexFile, record);
@@ -225,7 +222,10 @@ vector<int> DataBase::selectWhere(string field, string value) {
 				ss << record;
 				ss >> fieldValue >> idx;
 				if (fieldValue.compare(value) == 0) {
-					lines.push_back(idx);
+					//lines.push_back(idx);
+					vector<string> tupleVector = select(idx);
+					if (tupleVector.size() > 0)
+						lines.push_back(make_pair(idx, tupleVector));
 				}
 				if (fieldValue.compare("") == 0) {
 					break;
@@ -240,15 +240,20 @@ vector<int> DataBase::selectWhere(string field, string value) {
 			for (int i = 0; i < tableCurrentSize; i++) {
 				vector<string> tupleVector = select(i + 1);
 				if (tupleVector[k].compare(value) == 0) {
-					lines.push_back(i + 1);
+					lines.push_back(make_pair(i + 1, tupleVector));
 				}
 			}
 		}
 	}
-	for (int l : lines) {
-		cout << l << " ";
-		select(l);
+
+	for (int i = 0; i < lines.size(); i++) {
+		cout << lines[i].first << " ";
+		for (int j = 0; j < lines[i].second.size(); j++) {
+			cout << lines[i].second[j] << " ";
+		}
+		cout << endl;
 	}
+
 	return lines;
 }
 
@@ -259,11 +264,14 @@ void DataBase::updateWhere(string field, string value, string newValue) {
 	// мен€ем значение пол€ по номеру пол€
 	// преобразуем в строку
 	// вставл€ем в Ѕƒ на прежнее место
+
+	vector< pair<int, vector<string> > > lines = selectWhere(field, value);
+
 }
 
 
-void DataBase::deleteWhere(string field, string value) {
-	vector<int> lines = selectWhere(field, value);
+int DataBase::deleteWhere(string field, string value) {
+	vector< pair<int, vector<string> > > lines = selectWhere(field, value);
 
 	fstream tableFile(tableFileName, std::fstream::in | std::fstream::out);
 	int k = 2;
@@ -279,10 +287,12 @@ void DataBase::deleteWhere(string field, string value) {
 
 	if (tableFile.is_open()) {
 		for (int i = 0; i < lines.size(); i++) {
-			tableFile.seekg((lines[i] - 1) * tupleLength, 0);
+			tableFile.seekg((lines[i].first - 1) * tupleLength, 0);
 			tableFile << emptyRecord;
 		}
 	}
+
+	return lines.size();
 }
 
 
@@ -321,7 +331,6 @@ int DataBase::calculateIndexHash(string fieldName, int tableCapacity) {
 }
 
 
-
 void DataBase::changeTableCurrentSizeInFile(int curSize) {
 	fstream tableConfigFile(tableConfigFileName, std::fstream::in | std::fstream::out);
 	tableConfigFile.seekp(0);
@@ -329,13 +338,16 @@ void DataBase::changeTableCurrentSizeInFile(int curSize) {
 	tableConfigFile.close();
 }
 
-std::vector<std::string> split(const std::string& s, char delimiter)
+
+std::vector<std::string> DataBase::tupleToArray(const std::string& s, char delimiter)
 {
 	std::vector<std::string> tokens;
 	std::string token;
 	std::istringstream tokenStream(s);
 	while (std::getline(tokenStream, token, delimiter))
 	{
+		while (token[0] == ' ')
+			token.erase(0, 1);
 		tokens.push_back(token);
 	}
 	return tokens;
