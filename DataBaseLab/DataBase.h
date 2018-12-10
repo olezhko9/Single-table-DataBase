@@ -29,13 +29,14 @@ private:
 	void changeTableCurrentSizeInFile(int curSize);
 	std::vector<std::string> tupleToArray(const std::string& s, char delimiter);
 	vector<string> select(int line);
+	void deleteRecord(int line);
 public:
 	bool createTable(string table);
 	bool openTable(string table);
 	bool insert(vector<string> data);
 	int selectAll();
 	vector< pair<int, vector<string> > > selectWhere(string field, string value);
-	void updateWhere(string field, string value, string newValue);
+	int updateWhere(string field, string value, string newValue);
 	int deleteWhere(string field, string value);
 	void dropTable(string table);
 };

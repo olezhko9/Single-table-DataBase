@@ -17,7 +17,6 @@ private:
 	int cvc;
 public:
 	BankCard(string card_number, string card_holder, string card_end_date, float card_balance, int card_cvc);
-
+	BankCard();
 	vector<string> toArray();
-	friend ostream& operator<<(ostream& os, const BankCard& bc);
 };

@@ -184,8 +184,6 @@ vector<string> DataBase::select(int line) {
 }
 
 
-//void DataBase::deleteRecord(int line)
-
 vector< pair<int, vector<string> > > DataBase::selectWhere(string field, string value) {
 	vector< pair<int, vector<string> > > lines;
 	// Проверяем, существует ли такое поле в таблице
@@ -195,7 +193,8 @@ vector< pair<int, vector<string> > > DataBase::selectWhere(string field, string 
 			k = i;
 	}
 	if (k == -1) {
-		cout << "Такого поля не существует." << endl;
+		cout << "Такого поля не существует" << endl;
+		return lines;
 	}
 	else {
 		// Смотрим, есть ли для данного поля таблица индекса
@@ -208,7 +207,6 @@ vector< pair<int, vector<string> > > DataBase::selectWhere(string field, string 
 			getline(indexFile, record);
 			int recordSize = record.size() + 2;
 
-			
 			int fieldHash = calculateIndexHash(value, tableCapacity);
 			indexFile.seekp((fieldHash - 1) * recordSize, 0);
 
@@ -221,6 +219,10 @@ vector< pair<int, vector<string> > > DataBase::selectWhere(string field, string 
 				stringstream ss;
 				ss << record;
 				ss >> fieldValue >> idx;
+
+				while (fieldValue[0] == ' ')
+					fieldValue.erase(0, 1);
+
 				if (fieldValue.compare(value) == 0) {
 					//lines.push_back(idx);
 					vector<string> tupleVector = select(idx);
@@ -246,50 +248,75 @@ vector< pair<int, vector<string> > > DataBase::selectWhere(string field, string 
 		}
 	}
 
-	for (int i = 0; i < lines.size(); i++) {
+	/*for (int i = 0; i < lines.size(); i++) {
 		cout << lines[i].first << " ";
 		for (int j = 0; j < lines[i].second.size(); j++) {
 			cout << lines[i].second[j] << " ";
 		}
 		cout << endl;
 	}
-
+	*/
 	return lines;
 }
 
 
-void DataBase::updateWhere(string field, string value, string newValue) {
-	// ищем все записи по полю
-	// с помощью select получаем вектор значений
-	// меняем значение поля по номеру поля
-	// преобразуем в строку
-	// вставляем в БД на прежнее место
+int DataBase::updateWhere(string field, string value, string newValue) {
+	// проверяем на уникальность по ключевому полю
+	if (field.compare(tableFields[0].first) == 0) {
+		// если поле ключевое и запись не уникальна, то выходим
+		if (selectWhere(tableFields[0].first, newValue).size() != 0) {
+			return 0;
+		}
+	}
 
 	vector< pair<int, vector<string> > > lines = selectWhere(field, value);
+	// если нет записей, которые можно поменять, то выходим
+	if (lines.size() == 0) {
+		cout << "Такого поля не существует." << endl;
+		return 0;
+	}
+	else {
+		int k = -1;
+		for (int i = 0; i < tableFields.size(); i++) {
+			if (tableFields[i].first.compare(field) == 0)
+				k = i;
+		}
+		for (int i = 0; i < lines.size(); i++) {
+			// удаляем каждую старую запись
+			deleteRecord(lines[i].first);
+			
+			// изменяем значение поля
+			lines[i].second[k] = newValue;
 
+			// вставляем новую запись
+			insert(lines[i].second);
+		}		
+	}
+	return lines.size();
 }
 
 
-int DataBase::deleteWhere(string field, string value) {
-	vector< pair<int, vector<string> > > lines = selectWhere(field, value);
-
-	fstream tableFile(tableFileName, std::fstream::in | std::fstream::out);
-	int k = 2;
-	string tuple;
-
-	// пустая запись, которая заменить удаляемую
+void DataBase::deleteRecord(int line) {
+	int k = 2; // магическое число
+	// пустая запись, которая заменит удаляемую
 	string emptyRecord;
 	for (int i = 0; i < tupleLength - k; i++) {
 		emptyRecord.append(" ");
 	}
 	emptyRecord.append("\n");
 
+	fstream tableFile(tableFileName, std::fstream::in | std::fstream::out);
+	tableFile.seekg((line - 1) * tupleLength, 0);
+	tableFile << emptyRecord;
+}
 
-	if (tableFile.is_open()) {
-		for (int i = 0; i < lines.size(); i++) {
-			tableFile.seekg((lines[i].first - 1) * tupleLength, 0);
-			tableFile << emptyRecord;
-		}
+
+int DataBase::deleteWhere(string field, string value) {
+	vector< pair<int, vector<string> > > lines = selectWhere(field, value);
+
+	// удаляем строки по их номерам
+	for (int i = 0; i < lines.size(); i++) {
+		deleteRecord(lines[i].first);
 	}
 
 	return lines.size();
@@ -297,7 +324,7 @@ int DataBase::deleteWhere(string field, string value) {
 
 
 void DataBase::dropTable(string table) {
-
+	// здесь должен быть код удаления папки по ее имени...
 }
 
 
@@ -319,15 +346,15 @@ void DataBase::createIndexFile(string fieldName, int fieldLength, int indexFileS
 }
 
 
-// Алгоритм хэширования строк, которое используется для быстрого доступа к данным по ключевым полям.
-// Полное описание алгоритма http://e-maxx.ru/algo/string_hashes
+// Хэш функция с сайта http://qaru.site/questions/323303/hash-function-for-a-string
 int DataBase::calculateIndexHash(string fieldName, int tableCapacity) {
-	int p = 73; // простое число, примерно равное количеству символов во входном алфавите (прописные и строчные буквы и цифры)
-	unsigned long long hash = 0, power = 1;
-	for (int i = 0; i < fieldName.length(); i++) {
-		hash += (fieldName[i] - 'a' + 1) * power;
+	int seed = 131;
+	unsigned long hash = 0;
+	for (int i = 0; i < fieldName.length(); i++){
+		hash = (hash * seed) + fieldName[i];
 	}
 	return hash % tableCapacity;
+	return hash;
 }
 
 
