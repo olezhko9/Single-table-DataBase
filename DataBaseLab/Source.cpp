@@ -68,7 +68,8 @@ int main() {
 		// Поиск с условием
 		else if (consoleCommand == 5) {
 			DB.openTable("card");
-			DB.selectWhere("number", "4000300020001000");
+			//DB.selectWhere("number", "4000300020001000");
+			DB.selectWhere("balance", "10500.5");
 		}
 		// Удаление запись по значению поля
 		else if (consoleCommand == 7) {

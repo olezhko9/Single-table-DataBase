@@ -180,7 +180,8 @@ vector<string> DataBase::select(int line) {
 	}
 
 	vector<string> vs = split(tuple, ',');
-	if (vs.size() < tableFields.size())
+	//if (vs.size() < tableFields.size())
+	if (vs.size() < 2)
 		cout << "«апись отсутствует" << endl;
 	else
 		cout << tuple << endl;
@@ -233,8 +234,15 @@ vector<int> DataBase::selectWhere(string field, string value) {
 		}
 		// ≈сли таблицы индексов нет, то ищем простым перебором
 		else {
-			cout << "NO" << endl;
-
+			string tuple;
+			fstream tableFile(tableFileName, std::fstream::in);
+			// ѕроходим по всем запис€м в таблице
+			for (int i = 0; i < tableCurrentSize; i++) {
+				vector<string> tupleVector = select(i + 1);
+				if (tupleVector[k].compare(value) == 0) {
+					lines.push_back(i + 1);
+				}
+			}
 		}
 	}
 	for (int l : lines) {
@@ -245,12 +253,20 @@ vector<int> DataBase::selectWhere(string field, string value) {
 }
 
 
+void DataBase::updateWhere(string field, string value, string newValue) {
+	// ищем все записи по полю
+	// с помощью select получаем вектор значений
+	// мен€ем значение пол€ по номеру пол€
+	// преобразуем в строку
+	// вставл€ем в Ѕƒ на прежнее место
+}
+
+
 void DataBase::deleteWhere(string field, string value) {
 	vector<int> lines = selectWhere(field, value);
 
 	fstream tableFile(tableFileName, std::fstream::in | std::fstream::out);
 	int k = 2;
-	//char *tuple = new char[tupleLength - k];
 	string tuple;
 
 	// пуста€ запись, котора€ заменить удал€емую

@@ -30,10 +30,11 @@ private:
 public:
 	bool createTable(string table);
 	bool openTable(string table);
-	int selectAll();
-	vector<int> selectWhere(string field, string value);
 	bool insert(vector<string> data);
+	int selectAll();
 	vector<string> select(int line);
+	vector<int> selectWhere(string field, string value);
+	void updateWhere(string field, string value, string newValue);
 	void deleteWhere(string field, string value);
 	void dropTable(string table);
 };
