@@ -111,7 +111,6 @@ int main() {
 
 		// ”даление запись по значению пол€
 		else if (consoleCommand == 7) {
-			DB.openTable("card");
 			string field, value;
 			cout << "¬ведите им€ пол€, по которому нужно удалить: ";
 			cin >> field;
